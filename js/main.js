@@ -16,23 +16,33 @@ const restaurants = document.querySelector('.restaurants')
 const menu = document.querySelector('.menu')
 const logo = document.querySelector('.logo')
 const cardsMenu = document.querySelector('.cards-menu')
+const restauranTitle = document.querySelector('.restaurant-title')
+const rating = document.querySelector('.rating')
+const price = document.querySelector('.price')
+const category = document.querySelector('.category')
+const inputSearch = document.querySelector('.input-search')
+
+
+let minPriceArr = []
+let minPrice
+
 
 
 let login = localStorage.getItem('login')
 
 const valid = function (str) {
   const nameReg = /^[a-zA-Z][a-zA-Z0-9-_\.]{1,20}$/
-    return nameReg.test(str)
+  return nameReg.test(str)
 }
 
-const getData = async function(url){
-    const response = await fetch(url)
-    
-    if(!response.ok){
-      throw new Error(`Ошибка по адрессу ${url}, статус ошибки ${response.status}`)
-    }
-    return await response.json()
-    
+const getData = async function (url) {
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error(`Ошибка по адрессу ${url}, статус ошибки ${response.status}`)
+  }
+  return await response.json()
+
 }
 
 
@@ -46,7 +56,7 @@ function toggleModal() {
 
 function toogleModalAuth() {
   modalAuth.classList.toggle("is-open")
-  logInForm.setAttribute('autocomplete','off')
+  logInForm.setAttribute('autocomplete', 'off')
   logInForm.reset()
   loginInput.style.borderColor = ''
 
@@ -70,7 +80,7 @@ function authorized() {
   buttonOut.style.display = 'block'
   userName.style.display = 'inline'
   userName.textContent = login
-  
+
   buttonOut.addEventListener("click", logOut)
 }
 
@@ -80,12 +90,12 @@ function notAuthorized() {
 
   function logIn(e) {
     event.preventDefault()
-    
-    
+
+
     login = loginInput.value
 
 
-    if(valid(login)){
+    if (valid(login)) {
       localStorage.setItem('login', login)
       toogleModalAuth()
       buttonAuth.removeEventListener("click", toogleModalAuth)
@@ -93,12 +103,12 @@ function notAuthorized() {
       logInForm.removeEventListener('submit', logIn)
       logInForm.reset()
       checkAuth()
-    }else{
+    } else {
       loginInput.style.borderColor = 'red'
       loginInput.value = ''
       alert('Логин не может быть пустым!')
     }
-    
+
   }
 
 
@@ -106,7 +116,7 @@ function notAuthorized() {
   closeAuth.addEventListener("click", toogleModalAuth)
   logInForm.addEventListener('submit', logIn)
 
-  
+
 }
 
 function checkAuth() {
@@ -115,12 +125,13 @@ function checkAuth() {
   } else {
     notAuthorized()
   }
-  
+
 }
 
+function createCardReastaurant({ image, name, time_of_delivery: timeOfDelivery, stars, price, kitchen, products }) {
 
-function createCardReastaurant({image, name, time_of_delivery : timeOfDelivery, stars, price, kitchen, products}){
-  const card = `<a class="card card-restaurant" data-products="${products}">
+  const card = `<a class="card card-restaurant" data-products="${products}"
+                          data-info="${[name, stars, kitchen]}">
                   <img src="${image}" alt="image" class="card-image"/>
                   <div class="card-text">
                     <div class="card-heading">
@@ -136,23 +147,24 @@ function createCardReastaurant({image, name, time_of_delivery : timeOfDelivery, 
                     </div>
                   </div>
                 </a>`
-                
-                cardsRestaurants.insertAdjacentHTML('beforeend', card)
-                
+
+  cardsRestaurants.insertAdjacentHTML('beforeend', card)
+
 }
 
 
 
-function createCardGood({name, description, price, image}){
-  
-  
+function createCardGood({ name, description, price, image }) {
+
+
+
   const card = document.createElement('div')
-  
+
   card.className = 'card'
-  
+
 
   card.insertAdjacentHTML('beforeend', `
-            <img src="${image}" alt="image" class="card-image"/>
+            <img src="${image}" alt="${name}" class="card-image"/>
             <div class="card-text">
               <div class="card-heading">
                 <h3 class="card-title card-title-reg">${name}</h3>
@@ -170,74 +182,140 @@ function createCardGood({name, description, price, image}){
               </div>
             </div>
      `
-)
-   cardsMenu.insertAdjacentElement('beforeend',card)
+  )
+  cardsMenu.insertAdjacentElement('beforeend', card)
 }
 
 
-function openGoods(event){
- 
+function openGoods(event) {
+
   const target = event.target
+  if (login) {
+    const restaurant = target.closest('.card-restaurant')
 
-  const restaurant = target.closest('.card-restaurant')
-  
 
-  if(restaurant){
+    if (restaurant) {
+      minPriceArr = []
+      const info = restaurant.dataset.info.split(',')
 
-    if(login) {
+      const [name, stars, kitchen] = info
+
       cardsMenu.textContent = ''
-    containerPromo.classList.add('hide')
-    restaurants.classList.add('hide')
-    menu.classList.remove('hide')
-    getData(`./db/${restaurant.dataset.products}`)
+      containerPromo.classList.add('hide')
+      restaurants.classList.add('hide')
+      menu.classList.remove('hide')
+
+      restauranTitle.textContent = name
+      rating.textContent = stars
+      category.textContent = kitchen
+
+      getData(`./db/${restaurant.dataset.products}`)
         .then(data => {
 
-    data.forEach(createCardGood)
-  })
-    }else{
-    toogleModalAuth()
-    
+
+          data.forEach(item => {
+            createCardGood(item)
+            minPriceArr.push(item.price)
+
+          })
+          minPrice = Math.min(...minPriceArr)
+          price.textContent = `От ${minPrice} ₽`
+        })
     }
+
+  } else {
+    toogleModalAuth()
   }
-  
+
 }
 
-function returnMain(){
+function returnMain() {
   containerPromo.classList.remove('hide')
   restaurants.classList.remove('hide')
   menu.classList.add('hide')
 }
 
-
-function init(){
+function init() {
   getData('./db/partners.json')
-  .then(data => {
+    .then(data => {
 
-    data.forEach(createCardReastaurant)
+      data.forEach(createCardReastaurant)
+    })
+
+  cartButton.addEventListener("click", toggleModal);
+
+  close.addEventListener("click", toggleModal);
+
+  cardsRestaurants.addEventListener('click', openGoods)
+
+  logo.addEventListener('click', returnMain)
+
+  inputSearch.addEventListener('keydown', function (event) {
+    if (event.keyCode === 13) {
+      const target = event.target
+      const value = target.value.toLowerCase().trim()
+      const goods = []
+     
+      if(!value){
+        target.style.backgroundColor = 'tomato'
+        setTimeout(() => {
+          target.style.backgroundColor = ''
+        },2000)
+        return
+      }
+      
+
+      getData('./db/partners.json')
+        .then(data => {
+          const propucts = data.map(item => item.products)
+
+          propucts.forEach(item => {
+            getData(`./db/${item}`)
+              .then(goodset => {
+                goods.push(...goodset)
+                const searchGoods = goods.filter(item => item.name.toLowerCase().includes(value))
+                
+                
+                cardsMenu.textContent = ''
+
+                containerPromo.classList.add('hide')
+                restaurants.classList.add('hide')
+                menu.classList.remove('hide')
+
+                restauranTitle.textContent = 'Результаты поиска'
+                rating.textContent = ''
+                category.textContent = ''
+                price.textContent = ''
+
+                return searchGoods
+
+              })
+              .then(function(data){
+                data.forEach(createCardGood)
+              })
+
+          })
+
+
+        })
+      console.log(goods);
+
+    }
+
   })
 
-cartButton.addEventListener("click", toggleModal);
+  checkAuth()
 
-close.addEventListener("click", toggleModal);
-
-cardsRestaurants.addEventListener('click', openGoods )
-
-logo.addEventListener('click', returnMain)
-
-checkAuth()
-
-new Swiper('.swiper-container', {
-  loop:true,
-  slidesPerView:1,
-  spaceBetween: 5,
-  grabCursor: true,
-  autoplay: {
-    delay: 3000
-  },
-  speed: 1000,
-})
+  new Swiper('.swiper-container', {
+    loop: true,
+    slidesPerView: 1,
+    spaceBetween: 5,
+    grabCursor: true,
+    autoplay: {
+      delay: 3000
+    },
+    speed: 1000,
+  })
 }
 
 init()
-
-
