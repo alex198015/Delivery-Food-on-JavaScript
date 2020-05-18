@@ -25,13 +25,27 @@ const modalBody = document.querySelector('.modal-body')
 const modalPricetag = document.querySelector('.modal-pricetag')
 const buttonClearCart = document.querySelector('.clear-cart')
 
-
+let login = localStorage.getItem('login')
 let minPriceArr = []
 let minPrice
+
 const cart = []
 
 
-let login = localStorage.getItem('login')
+const loadCart = function(){
+  if(localStorage.getItem(login)){
+    JSON.parse(localStorage.getItem(login)).forEach(item => {
+      cart.push(item)
+    })
+  }
+  
+}
+
+
+const saveCart = function(){
+  localStorage.setItem(login, JSON.stringify(cart))
+}
+
 
 const valid = function (str) {
   const nameReg = /^[a-zA-Z][a-zA-Z0-9-_\.]{1,20}$/
@@ -66,14 +80,15 @@ function toogleModalAuth() {
 }
 
 function authorized() {
-
+  
   const logOut = () => {
     localStorage.removeItem('login')
     login = null
-    buttonAuth.style.display = 'flex'
-    cartButton.style.display = 'block'
+    cart.length = 0
+    buttonAuth.style.display = ''
     cartButton.style.display = ''
-    buttonOut.style.display = 'none'
+    userName.style.display = ''
+    buttonOut.style.display = ''
     buttonOut.removeEventListener("click", logOut)
     checkAuth()
     returnMain()
@@ -85,7 +100,7 @@ function authorized() {
   userName.style.display = 'inline'
   cartButton.style.display = 'flex'
   userName.textContent = login
-
+  loadCart()
   buttonOut.addEventListener("click", logOut)
 }
 
@@ -101,6 +116,7 @@ function notAuthorized() {
 
 
     if (valid(login)) {
+      
       localStorage.setItem('login', login)
       toogleModalAuth()
       buttonAuth.removeEventListener("click", toogleModalAuth)
@@ -124,14 +140,8 @@ function notAuthorized() {
 
 }
 
-function checkAuth() {
-  if (login) {
-    authorized()
-  } else {
-    notAuthorized()
-  }
+const checkAuth = () => login ? authorized() : notAuthorized()
 
-}
 
 function createCardReastaurant({ image, name, time_of_delivery: timeOfDelivery, stars, price, kitchen, products }) {
 
@@ -261,7 +271,7 @@ function addToCart(event) {
     }
 
   }
-
+  saveCart()
 }
 
 function renderCart() {
@@ -282,7 +292,6 @@ function renderCart() {
   })
   const totalPrice = cart.reduce((total, item) => total + parseFloat(item.cost) * item.count, 0)
   modalPricetag.textContent = totalPrice + ' ' + '₽'
-console.log(totalPrice);
 
 }
 
@@ -299,6 +308,8 @@ function changeCount(event){
     }
     if(target.classList.contains('counter-plus'))food.count++
     renderCart()
+    saveCart()
+    
   }
 
   // if(target.classList.contains('counter-minus')){
@@ -317,6 +328,7 @@ function changeCount(event){
 }
 
 function init() {
+
   getData('./db/partners.json')
     .then(data => {
 
@@ -326,7 +338,7 @@ function init() {
   cartButton.addEventListener("click", () => {
     renderCart()
     toggleModal()
-
+    
   });
 
   close.addEventListener("click", toggleModal);
@@ -334,6 +346,7 @@ function init() {
   buttonClearCart.addEventListener('click',() => {
     cart.length = 0
     renderCart()
+    saveCart()
   })
 
   cardsMenu.addEventListener('click', addToCart)
@@ -409,6 +422,7 @@ function init() {
     },
     speed: 1000,
   })
+  
 }
 
 init()
