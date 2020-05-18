@@ -21,11 +21,14 @@ const rating = document.querySelector('.rating')
 const price = document.querySelector('.price')
 const category = document.querySelector('.category')
 const inputSearch = document.querySelector('.input-search')
+const modalBody = document.querySelector('.modal-body')
+const modalPricetag = document.querySelector('.modal-pricetag')
+const buttonClearCart = document.querySelector('.clear-cart')
 
 
 let minPriceArr = []
 let minPrice
-
+const cart = []
 
 
 let login = localStorage.getItem('login')
@@ -67,9 +70,10 @@ function authorized() {
   const logOut = () => {
     localStorage.removeItem('login')
     login = null
-    buttonAuth.style.display = 'block'
+    buttonAuth.style.display = 'flex'
+    cartButton.style.display = 'block'
+    cartButton.style.display = ''
     buttonOut.style.display = 'none'
-    userName.style.display = 'none'
     buttonOut.removeEventListener("click", logOut)
     checkAuth()
     returnMain()
@@ -77,8 +81,9 @@ function authorized() {
 
   console.log('Авторизован');
   buttonAuth.style.display = 'none'
-  buttonOut.style.display = 'block'
+  buttonOut.style.display = 'flex'
   userName.style.display = 'inline'
+  cartButton.style.display = 'flex'
   userName.textContent = login
 
   buttonOut.addEventListener("click", logOut)
@@ -154,14 +159,14 @@ function createCardReastaurant({ image, name, time_of_delivery: timeOfDelivery, 
 
 
 
-function createCardGood({ name, description, price, image }) {
+function createCardGood({ name, description, price, image, id }) {
 
 
 
   const card = document.createElement('div')
 
   card.className = 'card'
-
+  // card.id = id
 
   card.insertAdjacentHTML('beforeend', `
             <img src="${image}" alt="${name}" class="card-image"/>
@@ -174,11 +179,11 @@ function createCardGood({ name, description, price, image }) {
                 </div>
               </div>
               <div class="card-buttons">
-                <button class="button button-primary button-add-cart">
+                <button class="button button-primary button-add-cart" id="${id}">
                   <span class="button-card-text">В корзину</span>
                   <span class="button-cart-svg"></span>
                 </button>
-                <strong class="card-price-bold">${price} ₽</strong>
+                <strong class="card-price-bold card-price">${price} ₽</strong>
               </div>
             </div>
      `
@@ -235,6 +240,82 @@ function returnMain() {
   menu.classList.add('hide')
 }
 
+function addToCart(event) {
+  const target = event.target
+  const buttonAddToCart = target.closest('.button-add-cart')
+  if (buttonAddToCart) {
+    const card = target.closest('.card')
+
+    const title = card.querySelector('h3.card-title').textContent
+    const cost = card.querySelector('.card-price').textContent
+    const id = buttonAddToCart.id
+    const food = cart.find(item => {
+      return item.id === id
+    })
+
+    if (food) {
+      food.count++
+
+    } else {
+      cart.push({ title, cost, id, count: 1 })
+    }
+
+  }
+
+}
+
+function renderCart() {
+  modalBody.textContent = ''
+  cart.forEach(item => {
+    const itemCart = `
+        <div class="food-row">
+              <span class="food-name">${item.title}</span>
+              <strong class="food-price">${item.cost}</strong>
+              <div class="food-counter">
+                <button class="counter-button counter-minus" data-id=${item.id}>-</button>
+                <span class="counter">${item.count}</span>
+                <button class="counter-button counter-plus" data-id=${item.id}>+</button>
+              </div>
+            </div>
+    `
+    modalBody.insertAdjacentHTML('afterbegin', itemCart)
+  })
+  const totalPrice = cart.reduce((total, item) => total + parseFloat(item.cost) * item.count, 0)
+  modalPricetag.textContent = totalPrice + ' ' + '₽'
+console.log(totalPrice);
+
+}
+
+function changeCount(event){
+  const target = event.target
+
+  if(target.classList.contains('counter-button')){
+    const food = cart.find(item => item.id === target.dataset.id) 
+    if(target.classList.contains('counter-minus')){
+      if(food.count === 0){
+        cart.splice(cart.indexOf(food),1)
+      } food.count--
+    
+    }
+    if(target.classList.contains('counter-plus'))food.count++
+    renderCart()
+  }
+
+  // if(target.classList.contains('counter-minus')){
+  //     const food = cart.find(item => item.id === target.dataset.id) 
+  //     food.count--
+  //     renderCart()
+  // }
+
+  // if(target.classList.contains('counter-plus')){
+  //   const food = cart.find(item => item.id === target.dataset.id) 
+  //     food.count++
+  //     renderCart()
+  // }
+
+
+}
+
 function init() {
   getData('./db/partners.json')
     .then(data => {
@@ -242,11 +323,24 @@ function init() {
       data.forEach(createCardReastaurant)
     })
 
-  cartButton.addEventListener("click", toggleModal);
+  cartButton.addEventListener("click", () => {
+    renderCart()
+    toggleModal()
+
+  });
 
   close.addEventListener("click", toggleModal);
 
+  buttonClearCart.addEventListener('click',() => {
+    cart.length = 0
+    renderCart()
+  })
+
+  cardsMenu.addEventListener('click', addToCart)
+
   cardsRestaurants.addEventListener('click', openGoods)
+
+  modalBody.addEventListener('click', changeCount)
 
   logo.addEventListener('click', returnMain)
 
@@ -255,27 +349,27 @@ function init() {
       const target = event.target
       const value = target.value.toLowerCase().trim()
       const goods = []
-     
-      if(!value){
+
+      if (!value) {
         target.style.backgroundColor = 'tomato'
         setTimeout(() => {
           target.style.backgroundColor = ''
-        },2000)
+        }, 2000)
         return
       }
-      
+
 
       getData('./db/partners.json')
         .then(data => {
-          const propucts = data.map(item => item.products)
+          const products = data.map(item => item.products)
 
-          propucts.forEach(item => {
+          products.forEach(item => {
             getData(`./db/${item}`)
               .then(goodset => {
                 goods.push(...goodset)
                 const searchGoods = goods.filter(item => item.name.toLowerCase().includes(value))
-                
-                
+
+
                 cardsMenu.textContent = ''
 
                 containerPromo.classList.add('hide')
@@ -290,7 +384,7 @@ function init() {
                 return searchGoods
 
               })
-              .then(function(data){
+              .then(function (data) {
                 data.forEach(createCardGood)
               })
 
@@ -298,7 +392,6 @@ function init() {
 
 
         })
-      console.log(goods);
 
     }
 
